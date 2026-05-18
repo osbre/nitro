@@ -42,7 +42,7 @@ render_element(O = #option{}) ->
   wf_tags:emit_tag(<<"option">>, nitro:render(O#option.body), lists:flatten([get_attrs(O) | O#option.data_fields])).
 
 get_attrs(O) ->
-  ValueAttr = case {O#option.selected, O#option.disabled} of
+  ValueAttr = case {O#option.selected == true, O#option.disabled == true} of
                 {true, true} -> <<"selected disabled value">>;
                 {true, false} -> <<"selected value">>;
                 {false, true} -> <<"disabled value">>;

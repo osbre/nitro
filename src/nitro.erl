@@ -29,8 +29,12 @@ qc(Key) ->
     qc(Key, CX#cx.req).
 
 qc(Key, Req) ->
-    proplists:get_value(nitro:to_binary(Key),
-                        cowboy_req:parse_qs(Req)).
+    case Req of
+        #{query_string := QS} ->
+            proplists:get_value(nitro:to_binary(Key), uri_string:dissect_query(nitro:to_binary(QS)));
+        _ ->
+            proplists:get_value(nitro:to_binary(Key), cowboy_req:parse_qs(Req))
+    end.
 
 start(_StartType, _StartArgs) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -348,13 +352,23 @@ cookie(Id, Value, Expire) ->
                         cookie_expire(Expire)])).
 
 cookies() ->
-    cowboy_req:parse_cookies((get(context))#cx.req).
+    Req = (get(context))#cx.req,
+    case Req of
+        #{cookies := Cookies} -> Cookies;
+        _ -> cowboy_req:parse_cookies(Req)
+    end.
 
 cookie(Key) ->
-    case lists:keyfind(Key,
-                       1,
-                       cowboy_req:parse_cookies((get(context))#cx.req))
-        of
-        false -> undefined;
-        {_, Value} -> Value
+    Req = (get(context))#cx.req,
+    case Req of
+        #{cookies := Cookies} ->
+            case lists:keyfind(nitro:to_binary(Key), 1, Cookies) of
+                false -> undefined;
+                {_, Value} -> Value
+            end;
+        _ ->
+            case lists:keyfind(Key, 1, cowboy_req:parse_cookies(Req)) of
+                false -> undefined;
+                {_, Value} -> Value
+            end
     end.
