@@ -32,8 +32,14 @@ qc(Key, Req) ->
     case Req of
         #{query_string := QS} ->
             proplists:get_value(nitro:to_binary(Key), uri_string:dissect_query(nitro:to_binary(QS)));
+        _ when is_map(Req) ->
+            undefined;
+        _ when Req =:= [] ->
+            undefined;
         _ ->
-            proplists:get_value(nitro:to_binary(Key), cowboy_req:parse_qs(Req))
+            try proplists:get_value(nitro:to_binary(Key), cowboy_req:parse_qs(Req))
+            catch _:_ -> undefined
+            end
     end.
 
 start(_StartType, _StartArgs) ->
@@ -355,7 +361,12 @@ cookies() ->
     Req = (get(context))#cx.req,
     case Req of
         #{cookies := Cookies} -> Cookies;
-        _ -> cowboy_req:parse_cookies(Req)
+        _ when Req =:= [] -> [];
+        _ when is_map(Req) -> [];
+        _ ->
+            try cowboy_req:parse_cookies(Req)
+            catch _:_ -> []
+            end
     end.
 
 cookie(Key) ->
@@ -366,9 +377,14 @@ cookie(Key) ->
                 false -> undefined;
                 {_, Value} -> Value
             end;
+        _ when Req =:= [] -> undefined;
+        _ when is_map(Req) -> undefined;
         _ ->
-            case lists:keyfind(Key, 1, cowboy_req:parse_cookies(Req)) of
-                false -> undefined;
-                {_, Value} -> Value
+            try
+                case lists:keyfind(Key, 1, cowboy_req:parse_cookies(Req)) of
+                    false -> undefined;
+                    {_, Value} -> Value
+                end
+            catch _:_ -> undefined
             end
     end.
